@@ -1,0 +1,5 @@
+[submodule "sonar-doxygen"]
+	path = GitPlugin.Test/TestData/sonar-doxygen
+	url = https://github.com/jmecosta/sonar-doxygen.git
+	branch = master
+
