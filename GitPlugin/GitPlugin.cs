@@ -19,6 +19,7 @@ namespace GitPlugin
     using VSSonarPlugins;
     using VSSonarPlugins.Types;
     using LibGit2Sharp;
+    using System.Diagnostics;
 
     /// <summary>
     ///     The cpp plugin.
@@ -28,6 +29,12 @@ namespace GitPlugin
     {
         public GitPlugin()
         {
+            this.descrition = new PluginDescription();
+            this.descrition.Description = "Git Source Code Provider";
+            this.descrition.Enabled = true;
+            this.descrition.Name = "Git Plugin";
+            this.descrition.Version = Assembly.GetExecutingAssembly().GetName().Version.ToString();
+            this.descrition.AssemblyPath = Assembly.GetExecutingAssembly().Location;
         }
 
         /// <summary>
@@ -36,6 +43,7 @@ namespace GitPlugin
         /// <typeparam name="string"></typeparam>
         /// <returns></returns>
         private readonly List<string> DllPaths = new List<string>();
+        private readonly PluginDescription descrition;
 
         public void AssociateProject(Resource project, ISonarConfiguration configuration)
         {
@@ -57,10 +65,51 @@ namespace GitPlugin
 
         public string GetBranch(string basePath)
         {
-            using (var repo = new Repository(basePath))
+            string currePath = basePath;
+
+            while (Path.IsPathRooted(Path.GetFullPath(currePath)))
             {
-                return repo.Head.Name;
+                try
+                {
+                    using (var repo = new Repository(currePath))
+                    {
+                        return repo.Head.Name;
+                    }
+                }
+                catch (RepositoryNotFoundException ex)
+                {
+                    Debug.WriteLine(ex.Message);
+                }
+
+                currePath = Directory.GetParent(currePath).ToString();
             }
+
+            return "";
+
+        }
+
+        public bool IsSupported(string basePath)
+        {
+            string currePath = basePath;
+
+            while (Path.IsPathRooted(Path.GetFullPath(currePath)))
+            {
+                try
+                {
+                    using (new Repository(currePath))
+                    {
+                        return true;
+                    }
+                }
+                catch (RepositoryNotFoundException ex)
+                {
+                    Debug.WriteLine(ex.Message);
+                }
+
+                currePath = Directory.GetParent(currePath).ToString();
+            }
+
+            return false;
         }
 
         public IList<string> GetHistory(Resource item)
@@ -75,22 +124,23 @@ namespace GitPlugin
 
         public IPluginControlOption GetPluginControlOptions(Resource project, ISonarConfiguration configuration)
         {
-            throw new NotImplementedException();
+            return null;
         }
 
         public PluginDescription GetPluginDescription()
         {
-            throw new NotImplementedException();
+            return this.descrition;
         }
 
         public void ResetDefaults()
         {
-            throw new NotImplementedException();
         }
 
         public void SetDllLocation(string path)
         {
-            throw new NotImplementedException();
+            this.DllPaths.Add(path);
         }
+
+
     }
 }
