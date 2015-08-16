@@ -1,5 +1,5 @@
 ﻿// --------------------------------------------------------------------------------------------------------------------
-// <copyright file="AssemblyInfo.cs" company="Copyright © 2014 jmecsoftware">
+// <copyright file="assemblyinfo.cs" company="Copyright © 2015 jmecsoftware">
 //     Copyright (C) 2014 [jmecsoftware, jmecsoftware2014@tekla.com]
 // </copyright>
 // --------------------------------------------------------------------------------------------------------------------
@@ -18,12 +18,12 @@ using System.Runtime.InteropServices;
 // General Information about an assembly is controlled through the following 
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
-[assembly: AssemblyTitle("CxxPlugin")]
+[assembly: AssemblyTitle("SQGitPlugin")]
 [assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("")]
-[assembly: AssemblyProduct("CxxPlugin")]
-[assembly: AssemblyCopyright("Copyright © 2013 Tekla Corporation. Tekla is a Trimble Company")]
+[assembly: AssemblyProduct("SQGitPlugin")]
+[assembly: AssemblyCopyright("Copyright © 2015 jmecsoftware")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 

@@ -55,16 +55,17 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\GitPlugin\GitPlugin.csproj">
-      <Project>{3755a099-7ee1-4593-9bb0-50da67039c99}</Project>
-      <Name>GitPlugin</Name>
-    </ProjectReference>
-  </ItemGroup>
-  <ItemGroup>
+    <None Include="GitPlugin.Test.licenseheader" />
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
     <Service Include="{82A7F48D-3B50-4B1E-B82E-3ADA8210C358}" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\GitPlugin\SQGitPlugin.csproj">
+      <Project>{3755a099-7ee1-4593-9bb0-50da67039c99}</Project>
+      <Name>SQGitPlugin</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">

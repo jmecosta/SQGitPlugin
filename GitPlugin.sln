@@ -3,9 +3,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 14
 VisualStudioVersion = 14.0.23107.0
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GitPlugin", "GitPlugin\GitPlugin.csproj", "{3755A099-7EE1-4593-9BB0-50DA67039C99}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SQGitPlugin", "GitPlugin\SQGitPlugin.csproj", "{3755A099-7EE1-4593-9BB0-50DA67039C99}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GitPlugin.Test", "GitPlugin.Test\GitPlugin.Test.csproj", "{C064CAA3-1B30-41AF-B534-7A4D9B71FE89}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SQGitPlugin.Test", "GitPlugin.Test\SQGitPlugin.Test.csproj", "{C064CAA3-1B30-41AF-B534-7A4D9B71FE89}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
