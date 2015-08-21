@@ -44,7 +44,7 @@ namespace SQGitPlugin.Test
             var sourceDirPath = Directory.GetParent(Directory.GetParent(this.executionPath).ToString()).ToString();
             var repo = Path.Combine(sourceDirPath, "TestData", "sonar-doxygen");
             plugin.InitializeRepository(repo);
-            Assert.That(plugin.GetBranch(), Is.EqualTo("master"));
+            Assert.That(plugin.GetBranch(), Is.EqualTo("origin/master"));
         }
 
         /// <summary>
@@ -58,7 +58,7 @@ namespace SQGitPlugin.Test
             var sourceDirPath = Directory.GetParent(Directory.GetParent(this.executionPath).ToString()).ToString();
             var repo = Path.Combine(sourceDirPath, "TestData", "sonar-doxygen", "src");
             plugin.InitializeRepository(repo);
-            Assert.That(plugin.GetBranch(), Is.EqualTo("master"));
+            Assert.That(plugin.GetBranch(), Is.EqualTo("origin/master"));
         }
 
         /// <summary>
@@ -125,7 +125,7 @@ namespace SQGitPlugin.Test
         {
             var mockNote = new Mock<INotificationManager>();
             var plugin = new SQGitPlugin(mockNote.Object) as ISourceVersionPlugin;
-            Assert.Throws<NullReferenceException>(() => plugin.InitializeRepository("c:\\temp"));
+            Assert.Throws<NullReferenceException>(() => plugin.InitializeRepository("c:\\windows"));
         }
     }
 }
