@@ -37,13 +37,8 @@
         <PluginsOutputPath     Condition="'$(PluginsOutputPath)'==''">$(MSBuildThisFileDirectory)BuildDrop\$(OutFolder)\</PluginsOutputPath>
         <OBJDir>$(MSBuildThisFileDirectory)ObjDrop\$(OutFolder)\$(Configuration)\$(TSPlatform)</OBJDir>
         <IntermediateOutputPath>$(OBJDir)$(MSBuildProjectName)\</IntermediateOutputPath>
-    </PropertyGroup>    
-
-    
-    <!-- Basic settings -->
-    <PropertyGroup>
+        
         <VSSonarExtensionVersion                                     Condition="'$(VSSonarExtensionVersion)'==''">4.0.0.0</VSSonarExtensionVersion>
         <VSSonarExtensionPluginsVersion                              Condition="'$(VSSonarExtensionPluginsVersion)'==''">$(MajorVersionNumber).$(MinorVersionNumber).$(BuildNumber).$(RevisionNumber)</VSSonarExtensionPluginsVersion>
-    </PropertyGroup>
-    
-    </Project>
+    </PropertyGroup>    
+</Project>
