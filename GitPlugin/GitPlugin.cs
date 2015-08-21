@@ -11,30 +11,76 @@
 // You should have received a copy of the GNU Lesser General Public License along with this program; if not, write to the Free
 // Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 // --------------------------------------------------------------------------------------------------------------------
-
 namespace SQGitPlugin
 {
     using System;
     using System.Collections.Generic;
     using System.ComponentModel.Composition;
-    using System.Globalization;
+    using System.Diagnostics;
     using System.IO;
     using System.Reflection;
-    using System.Windows.Threading;
+    using System.Text.RegularExpressions;
 
+    using LibGit2Sharp;
     using VSSonarPlugins;
     using VSSonarPlugins.Types;
-    using LibGit2Sharp;
-    using System.Diagnostics;
+    using VSSonarQubeCmdExecutor;
 
     /// <summary>
-    ///     The cpp plugin.
+    /// The cpp plugin.
     /// </summary>
     [Export(typeof(IPlugin))]
     public class SQGitPlugin : ISourceVersionPlugin
     {
-        public SQGitPlugin()
+        /// <summary>
+        /// The blame cache.
+        /// </summary>
+        private readonly Dictionary<string, BlameHunkCollection> blameCache = new Dictionary<string, BlameHunkCollection>();
+
+        /// <summary>
+        /// The blame cache command line.
+        /// </summary>
+        private readonly Dictionary<string, GitBlame> blameCacheCommandLine = new Dictionary<string, GitBlame>();
+
+        /// <summary>
+        /// The DLL paths.
+        /// </summary>
+        private readonly List<string> dllPaths = new List<string>();
+
+        /// <summary>
+        /// The descrition.
+        /// </summary>
+        private readonly PluginDescription descrition;
+
+        /// <summary>
+        /// The notification manager.
+        /// </summary>
+        private readonly INotificationManager notificationManager;
+
+        /// <summary>
+        /// The executor.
+        /// </summary>
+        private readonly IVSSonarQubeCmdExecutor executor;
+
+        /// <summary>
+        /// The repository.
+        /// </summary>
+        private Repository repository;
+
+        /// <summary>
+        /// The base path.
+        /// </summary>
+        private string basePath;
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="SQGitPlugin" /> class.
+        /// </summary>
+        /// <param name="notificationManager">The notification manager.</param>
+        public SQGitPlugin(INotificationManager notificationManager)
         {
+            this.executor = new VSSonarQubeCmdExecutor(6000);
+            this.UseCommandLine = true;
+            this.notificationManager = notificationManager;
             this.descrition = new PluginDescription();
             this.descrition.Description = "Git Source Code Provider";
             this.descrition.Enabled = true;
@@ -44,59 +90,262 @@ namespace SQGitPlugin
         }
 
         /// <summary>
-        /// dll path locations
+        /// Initializes a new instance of the <see cref="SQGitPlugin"/> class.
         /// </summary>
-        /// <typeparam name="string"></typeparam>
-        /// <returns></returns>
-        private readonly List<string> DllPaths = new List<string>();
-        private readonly PluginDescription descrition;
+        public SQGitPlugin(INotificationManager notificationManager, IVSSonarQubeCmdExecutor executor)
+        {
+            this.executor = executor;
+            this.UseCommandLine = true;
+            this.notificationManager = notificationManager;
+            this.descrition = new PluginDescription();
+            this.descrition.Description = "Git Source Code Provider";
+            this.descrition.Enabled = true;
+            this.descrition.Name = "Git Plugin";
+            this.descrition.Version = Assembly.GetExecutingAssembly().GetName().Version.ToString();
+            this.descrition.AssemblyPath = Assembly.GetExecutingAssembly().Location;
+        }
 
+        /// <summary>
+        /// Gets or sets a value indicating whether [use command line].
+        /// </summary>
+        /// <value>
+        ///   <c>true</c> if [use command line]; otherwise, <c>false</c>.
+        /// </value>
+        public bool UseCommandLine { get; set; }
+
+        /// <summary>
+        /// Associates the project.
+        /// </summary>
+        /// <param name="project">The project.</param>
+        /// <param name="configuration">The configuration.</param>
         public void AssociateProject(Resource project, ISonarConfiguration configuration)
         {
+            // not needed
         }
 
+        /// <summary>
+        /// Performs application-defined tasks associated with freeing, releasing, or resetting unmanaged resources.
+        /// </summary>
         public void Dispose()
         {
+            // not needed
         }
 
+        /// <summary>
+        /// DLLs the locations.
+        /// </summary>
+        /// <returns>Returns the dlls locations.</returns>
         public IList<string> DllLocations()
         {
-            return DllPaths;
+            return this.dllPaths;
         }
 
+        /// <summary>
+        /// Generates the token identifier.
+        /// </summary>
+        /// <param name="configuration">The configuration.</param>
+        /// <returns>Returns nothing.</returns>
         public string GenerateTokenId(ISonarConfiguration configuration)
         {
-            return "";
+            return string.Empty;
         }
 
-        public string GetBranch(string basePath)
+        /// <summary>
+        /// Gets the branch.
+        /// </summary>
+        /// <returns>
+        /// Returns the branch.
+        /// </returns>
+        public string GetBranch()
         {
-            string currePath = basePath;
+            if (this.repository == null)
+            {
+                return string.Empty;
+            }
 
-            while (Path.IsPathRooted(Path.GetFullPath(currePath)))
+            return this.repository.Head.Name;
+        }
+
+        /// <summary>
+        /// Gets the history.
+        /// </summary>
+        /// <param name="path">The path for the file.</param>
+        /// <returns>
+        /// Blame info.
+        /// </returns>
+        public IBlameInformation GetHistory(string path)
+        {
+            if (this.repository == null)
+            {
+                return null;
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Determines whether the specified base path is supported.
+        /// </summary>
+        /// <returns>
+        /// Returns if plugin supports solutions.
+        /// </returns>
+        public bool IsSupported()
+        {
+            return this.repository != null ? true : false;
+        }
+
+        /// <summary>
+        /// Gets the blame by line.
+        /// </summary>
+        /// <param name="filePath">The file path.</param>
+        /// <param name="line">The line param.</param>
+        /// <returns>
+        /// Returns blame info, or null.
+        /// </returns>
+        public BlameLine GetBlameByLine(string filePath, int line)
+        {
+            if (this.repository == null)
+            {
+                return null;
+            }
+
+            if (this.UseCommandLine)
             {
                 try
                 {
-                    using (var repo = new Repository(currePath))
+                    var relativePath = Path.GetFullPath(filePath).Replace(Path.GetFullPath(this.basePath) + "\\", string.Empty);
+                    if (this.blameCacheCommandLine.ContainsKey(relativePath))
                     {
-                        return repo.Head.Name;
+                        return this.BlameByLineByCommandLine(this.blameCacheCommandLine[relativePath], line);
+                    }
+                    else
+                    {
+                        var blameInfo = this.GenerateBlameForFile(relativePath);
+                        this.blameCacheCommandLine.Add(relativePath, blameInfo);
+                        return this.BlameByLineByCommandLine(blameInfo, line);
+                    }
+
+                }
+                catch (Exception ex)
+                {
+                    this.notificationManager.ReportMessage(new Message { Id = "SQGitPlugin", Data = "Cannot blame using command line: ex " + ex.Message });
+                    this.notificationManager.ReportMessage(new Message { Id = "SQGitPlugin", Data = "Make sure Git is installed and available in PATH" });
+                    this.notificationManager.ReportException(ex);
+                    Debug.WriteLine(ex.Message);
+                    return null;
+                }
+            }
+            else
+            {
+                try
+                {
+                    var relativePath = Path.GetFullPath(filePath).Replace(Path.GetFullPath(this.basePath) + "\\", string.Empty);
+
+                    if (this.blameCache.ContainsKey(relativePath))
+                    {
+                        return this.BlameByLine(this.blameCache[relativePath], line - 1);
+                    }
+                    else
+                    {
+                        var blameInfo = this.repository.Blame(relativePath);
+                        this.blameCache.Add(relativePath, blameInfo);
+                        return this.BlameByLine(blameInfo, line - 1);
                     }
                 }
-                catch (RepositoryNotFoundException ex)
+                catch (Exception ex)
                 {
+                    this.notificationManager.ReportMessage(new Message { Id = "SQGitPlugin", Data = "Cannot blame using libsharp2git: ex " + ex.Message });
+                    this.notificationManager.ReportException(ex);
                     Debug.WriteLine(ex.Message);
+                    return null;
                 }
-
-                currePath = Directory.GetParent(currePath).ToString();
             }
-
-            return "";
-
         }
 
-        public bool IsSupported(string basePath)
+        /// <summary>
+        /// Initializes the repository.
+        /// </summary>
+        /// <param name="basePathIn">The base path in.</param>
+        public void InitializeRepository(string basePathIn)
         {
-            string currePath = basePath;
+            if (!Directory.Exists(basePathIn))
+            {
+                return;
+            }
+
+            var root = this.GetPathRoot(basePathIn);
+
+            if (!string.IsNullOrEmpty(root))
+            {
+                this.basePath = basePathIn;
+
+                if (this.repository != null)
+                {
+                    this.blameCache.Clear();
+                    this.repository.Dispose();
+                }
+
+                this.repository = new Repository(root);
+            }
+        }
+
+        /// <summary>
+        /// Gets the licenses.
+        /// </summary>
+        /// <param name="configuration">The configuration.</param>
+        /// <returns>Returns nothing.</returns>
+        public Dictionary<string, VsLicense> GetLicenses(ISonarConfiguration configuration)
+        {
+            return null;
+        }
+
+        /// <summary>
+        /// Gets the plugin control options.
+        /// </summary>
+        /// <param name="project">The project.</param>
+        /// <param name="configuration">The configuration.</param>
+        /// <returns>Returns nothing.</returns>
+        public IPluginControlOption GetPluginControlOptions(Resource project, ISonarConfiguration configuration)
+        {
+            return null;
+        }
+
+        /// <summary>
+        /// Gets the plugin description.
+        /// </summary>
+        /// <returns>Returns plugin description.</returns>
+        public PluginDescription GetPluginDescription()
+        {
+            return this.descrition;
+        }
+
+        /// <summary>
+        /// Resets the defaults.
+        /// </summary>
+        public void ResetDefaults()
+        {
+            // not needed
+        }
+
+        /// <summary>
+        /// Sets the DLL location.
+        /// </summary>
+        /// <param name="path">The path for the file.</param>
+        public void SetDllLocation(string path)
+        {
+            this.dllPaths.Add(path);
+        }
+
+        /// <summary>
+        /// Determines whether the specified base path is supported.
+        /// </summary>
+        /// <param name="basePathIn">The base path in.</param>
+        /// <returns>
+        /// Returns if plugin supports solutions.
+        /// </returns>
+        private string GetPathRoot(string basePathIn)
+        {
+            string currePath = basePathIn;
 
             while (Path.IsPathRooted(Path.GetFullPath(currePath)))
             {
@@ -104,7 +353,7 @@ namespace SQGitPlugin
                 {
                     using (new Repository(currePath))
                     {
-                        return true;
+                        return currePath;
                     }
                 }
                 catch (RepositoryNotFoundException ex)
@@ -115,38 +364,100 @@ namespace SQGitPlugin
                 currePath = Directory.GetParent(currePath).ToString();
             }
 
-            return false;
+            return string.Empty;
         }
 
-        public IList<string> GetHistory(Resource item)
+        /// <summary>
+        /// Blames the by line.
+        /// </summary>
+        /// <param name="blameInfo">The blame information.</param>
+        /// <param name="line">The line param.</param>
+        /// <returns>Returns null if not found.</returns>
+        private BlameLine BlameByLine(BlameHunkCollection blameInfo, int line)
         {
-            throw new NotImplementedException();
-        }
+            var enumerator = blameInfo.GetEnumerator();
+            enumerator.MoveNext();
+            var prev = enumerator.Current;
+            while (enumerator.MoveNext())
+            {
+                var curr = enumerator.Current;
 
-        public Dictionary<string, VsLicense> GetLicenses(ISonarConfiguration configuration)
-        {
+                Debug.WriteLine(prev.FinalSignature.Name + "    " + prev.FinalSignature.When + " === " + prev.FinalStartLineNumber + " === " + curr.FinalStartLineNumber + "     " + line.ToString());
+
+                if (line >= prev.FinalStartLineNumber && line < curr.FinalStartLineNumber)
+                {
+                    var blame = new BlameLine();
+                    blame.Line = line;
+                    blame.Author = prev.FinalSignature.Name;
+                    blame.Date = prev.FinalSignature.When.LocalDateTime;
+                    blame.Email = prev.FinalSignature.Email;
+                    return blame;
+                }
+
+                prev = enumerator.Current;
+            }
+
             return null;
         }
 
-        public IPluginControlOption GetPluginControlOptions(Resource project, ISonarConfiguration configuration)
+
+        /// <summary>
+        /// Generates the blame for file.
+        /// </summary>
+        /// <param name="relativePath">The relative path.</param>
+        /// <returns>Returns command line blame line.</returns>
+        private GitBlame GenerateBlameForFile(string relativePath)
         {
+            this.executor.ResetData();
+            this.executor.ExecuteCommand("git.exe", "blame --porcelain -M -w " + relativePath, new Dictionary<string, string>(), this.basePath);
+            var lines = this.executor.GetStdOut();
+
+            return GitExtensionsFunctions.GenerateBlameForFile(relativePath, lines);
+        }
+
+        /// <summary>
+        /// Blames the by line by command line.
+        /// </summary>
+        /// <param name="list">The list param.</param>
+        /// <param name="line">The line param.</param>
+        /// <returns>
+        /// Returns blame line.
+        /// </returns>
+        private BlameLine BlameByLineByCommandLine(GitBlame list, int line)
+        {
+            if (line >= list.Lines.Count)
+            {
+                return null;
+            }
+
+            var lineBlame = list.Lines[line - 1];
+
+            foreach (var item in list.Headers)
+            {
+                if (item.CommitGuid.Equals(lineBlame.CommitGuid))
+                {
+                    var blame = new BlameLine();
+                    blame.Author = item.Author;
+                    blame.Email = item.AuthorMail;
+                    blame.Date = item.CommitterTime;
+                    blame.Line = line;
+                    return blame;
+                }
+            }
+
             return null;
         }
 
-        public PluginDescription GetPluginDescription()
+        /// <summary>
+        /// Determines whether [is valid sh a1] [the specified s].
+        /// </summary>
+        /// <param name="stringData">The string data.</param>
+        /// <returns>
+        /// If string is valid.
+        /// </returns>
+        private bool CheckAgaistSHA1(string stringData)
         {
-            return this.descrition;
+            return Regex.Matches(stringData, "[a-fA-F0-9]{40}").Count != 0;
         }
-
-        public void ResetDefaults()
-        {
-        }
-
-        public void SetDllLocation(string path)
-        {
-            this.DllPaths.Add(path);
-        }
-
-
     }
 }

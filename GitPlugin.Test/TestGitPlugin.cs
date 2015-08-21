@@ -13,42 +13,133 @@
 // --------------------------------------------------------------------------------------------------------------------
 namespace SQGitPlugin.Test
 {
-    using NUnit.Framework;
-    using System.Reflection;
-    using System.IO;
-    using VSSonarPlugins;
     using System;
+    using System.IO;
+    using System.Reflection;
 
+    using NUnit.Framework;
+    using VSSonarPlugins;
+    using Moq;
+    using System.Linq;
+
+    /// <summary>
+    /// Tests the Git Plugin.
+    /// </summary>
     [TestFixture]
     public class TestSQGitPlugin
     {
-        private readonly string executionPath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().CodeBase.Replace("file:///", ""));
+        /// <summary>
+        /// The execution path.
+        /// </summary>
+        private readonly string executionPath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().CodeBase.Replace("file:///", string.Empty));
 
+        /// <summary>
+        /// Correctlies the get branch.
+        /// </summary>
         [Test]
         public void CorrectlyGetBranch()
         {
-            var plugin = new SQGitPlugin() as ISourceVersionPlugin;
-            var sourceDirPath = Directory.GetParent(Directory.GetParent(executionPath).ToString()).ToString();
+            var mockNote = new Mock<INotificationManager>();
+            var plugin = new SQGitPlugin(mockNote.Object) as ISourceVersionPlugin;
+            var sourceDirPath = Directory.GetParent(Directory.GetParent(this.executionPath).ToString()).ToString();
             var repo = Path.Combine(sourceDirPath, "TestData", "sonar-doxygen");
-            Assert.That(plugin.GetBranch(repo), Is.EqualTo("master"));
+            plugin.InitializeRepository(repo);
+            Assert.That(plugin.GetBranch(), Is.EqualTo("master"));
         }
 
+        /// <summary>
+        /// Correctlies the get branch if not root repo.
+        /// </summary>
         [Test]
         public void CorrectlyGetBranchIfNotRootRepo()
         {
-            var plugin = new SQGitPlugin() as ISourceVersionPlugin;
-            var sourceDirPath = Directory.GetParent(Directory.GetParent(executionPath).ToString()).ToString();
-            var repo = Path.Combine(sourceDirPath, "TestData", "sonar-doxygen" , "src");
-            Assert.That(plugin.GetBranch(repo), Is.EqualTo("master"));
+            var mockNote = new Mock<INotificationManager>();
+            var plugin = new SQGitPlugin(mockNote.Object) as ISourceVersionPlugin;
+            var sourceDirPath = Directory.GetParent(Directory.GetParent(this.executionPath).ToString()).ToString();
+            var repo = Path.Combine(sourceDirPath, "TestData", "sonar-doxygen", "src");
+            plugin.InitializeRepository(repo);
+            Assert.That(plugin.GetBranch(), Is.EqualTo("master"));
         }
 
+        /// <summary>
+        /// Correctlies the get branch if not root repo.
+        /// </summary>
+        [Test]
+        public void CorrectlyBlamesFiles()
+        {
+            var mockNote = new Mock<INotificationManager>();
+            var plugin = new SQGitPlugin(mockNote.Object) as ISourceVersionPlugin;
+            var sourceDirPath = Directory.GetParent(Directory.GetParent(this.executionPath).ToString()).ToString();
+            var repo = Path.Combine(sourceDirPath, "TestData", "sonar-doxygen");
+            plugin.InitializeRepository(repo);
+            Assert.That(plugin.GetHistory(Path.Combine(repo, "pom.xml")), Is.Null);
+        }
+
+        /// <summary>
+        /// Correctlies the get branch if not root repo.
+        /// </summary>
+        [Test]
+        public void CorrectlyBlamesLineByCommandLine()
+        {
+            var lines = File.ReadLines(Path.Combine(this.executionPath, "data", "blame.txt")).ToList();
+
+            var mockNote = new Mock<INotificationManager>();
+            var mockCommand = new Mock<IVSSonarQubeCmdExecutor>();
+            mockCommand.Setup(x => x.GetStdOut()).Returns(lines);
+
+            var plugin = new SQGitPlugin(mockNote.Object, mockCommand.Object) as ISourceVersionPlugin;
+            var sourceDirPath = Directory.GetParent(Directory.GetParent(this.executionPath).ToString()).ToString();
+            var repo = Path.Combine(sourceDirPath, "TestData", "sonar-doxygen");
+            plugin.InitializeRepository(repo);
+            var lineBlame = plugin.GetBlameByLine(Path.Combine(repo, "pom.xml"), 10);
+            Assert.That(lineBlame, Is.Not.Null);
+        }
+
+        /// <summary>
+        /// Correctlies the get branch if not root repo.
+        /// </summary>
+        [Test]
+        public void CorrectlyBlamesLineByCommandLineMultiple()
+        {
+            var lines = File.ReadLines(Path.Combine(this.executionPath, "data", "blameMultiple.txt")).ToList();
+
+            var mockNote = new Mock<INotificationManager>();
+            var mockCommand = new Mock<IVSSonarQubeCmdExecutor>();
+            mockCommand.Setup(x => x.GetStdOut()).Returns(lines);
+
+            var plugin = new SQGitPlugin(mockNote.Object, mockCommand.Object) as ISourceVersionPlugin;
+            var sourceDirPath = Directory.GetParent(Directory.GetParent(this.executionPath).ToString()).ToString();
+            var repo = Path.Combine(sourceDirPath, "TestData", "sonar-doxygen");
+            plugin.InitializeRepository(repo);
+            var lineBlame = plugin.GetBlameByLine(Path.Combine(repo, "pom.xml"), 31);
+            Assert.That(lineBlame, Is.Not.Null);
+        }
+
+        /// <summary>
+        /// Correctlies the get branch if not root repo.
+        /// </summary>
+        [Test]
+        public void CorrectlyBlamesLine()
+        {
+            var mockNote = new Mock<INotificationManager>();
+            var plugin = new SQGitPlugin(mockNote.Object);
+            plugin.UseCommandLine = false;
+            var sourceDirPath = Directory.GetParent(Directory.GetParent(this.executionPath).ToString()).ToString();
+            var repo = Path.Combine(sourceDirPath, "TestData", "sonar-doxygen");
+            plugin.InitializeRepository(repo);
+            var lineBlame = plugin.GetBlameByLine(Path.Combine(repo, "pom.xml"), 10);
+            Assert.That(lineBlame, Is.Not.Null);
+        }
+
+        /// <summary>
+        /// Thrwoses for not avaiable repo.
+        /// </summary>
         [Test]
         public void ThrwosForNotAvaiableRepo()
         {
-            var plugin = new SQGitPlugin() as ISourceVersionPlugin;
-            var sourceDirPath = Directory.GetParent(Directory.GetParent(executionPath).ToString()).ToString();
-            var repo = Path.Combine(sourceDirPath, "TestData", "sonar-doxygen", "src");
-            Assert.Throws<NullReferenceException>(() => plugin.GetBranch("c:\\temp"));
+            var mockNote = new Mock<INotificationManager>();
+            var plugin = new SQGitPlugin(mockNote.Object) as ISourceVersionPlugin;
+            Assert.Throws<NullReferenceException>(() => plugin.InitializeRepository("c:\\temp"));
         }
     }
 }
