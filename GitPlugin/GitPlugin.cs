@@ -167,23 +167,6 @@ namespace SQGitPlugin
         }
 
         /// <summary>
-        /// Gets the history.
-        /// </summary>
-        /// <param name="path">The path for the file.</param>
-        /// <returns>
-        /// Blame info.
-        /// </returns>
-        public IBlameInformation GetHistory(string path)
-        {
-            if (this.repository == null)
-            {
-                return null;
-            }
-
-            return null;
-        }
-
-        /// <summary>
         /// Determines whether the specified base path is supported.
         /// </summary>
         /// <returns>
@@ -438,9 +421,11 @@ namespace SQGitPlugin
                 {
                     var blame = new BlameLine();
                     blame.Author = item.Author;
-                    blame.Email = item.AuthorMail;
+                    blame.Email = item.AuthorMail.TrimEnd('>').TrimStart('<').Trim();
                     blame.Date = item.CommitterTime;
                     blame.Line = line;
+                    blame.Guid = item.CommitGuid;
+                    blame.Summary = item.Summary;
                     return blame;
                 }
             }
@@ -459,5 +444,6 @@ namespace SQGitPlugin
         {
             return Regex.Matches(stringData, "[a-fA-F0-9]{40}").Count != 0;
         }
+  
     }
 }

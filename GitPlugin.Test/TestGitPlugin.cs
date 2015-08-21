@@ -65,20 +65,6 @@ namespace SQGitPlugin.Test
         /// Correctlies the get branch if not root repo.
         /// </summary>
         [Test]
-        public void CorrectlyBlamesFiles()
-        {
-            var mockNote = new Mock<INotificationManager>();
-            var plugin = new SQGitPlugin(mockNote.Object) as ISourceVersionPlugin;
-            var sourceDirPath = Directory.GetParent(Directory.GetParent(this.executionPath).ToString()).ToString();
-            var repo = Path.Combine(sourceDirPath, "TestData", "sonar-doxygen");
-            plugin.InitializeRepository(repo);
-            Assert.That(plugin.GetHistory(Path.Combine(repo, "pom.xml")), Is.Null);
-        }
-
-        /// <summary>
-        /// Correctlies the get branch if not root repo.
-        /// </summary>
-        [Test]
         public void CorrectlyBlamesLineByCommandLine()
         {
             var lines = File.ReadLines(Path.Combine(this.executionPath, "data", "blame.txt")).ToList();
