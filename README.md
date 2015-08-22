@@ -1,4 +1,4 @@
-GitPlugin
+GitPlugin [![Build status](https://ci.appveyor.com/api/projects/status/opjchw7n57qrw4ub?svg=true)](https://ci.appveyor.com/project/jorgecosta/sqgitplugin)
 =========
 
 GitPlugin - Plugin for VSSonarQubeExtension - Supports Git Source Control
