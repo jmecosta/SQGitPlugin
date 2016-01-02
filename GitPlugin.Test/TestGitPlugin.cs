@@ -121,7 +121,7 @@ namespace SQGitPlugin.Test
         /// Thrwoses for not avaiable repo.
         /// </summary>
         [Test]
-        public void ThrwosForNotAvaiableRepo()
+        public void ThrowsForNotAvailableRepo()
         {
             var mockNote = new Mock<INotificationManager>();
             var plugin = new SQGitPlugin(mockNote.Object) as ISourceVersionPlugin;
