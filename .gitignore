@@ -116,3 +116,5 @@ buildlog2013.txt
 buildlog2015.txt
 GitPlugin2013.VSQ
 GitPlugin2015.VSQ
+.cxxresults/**
+.sonarqube/**
