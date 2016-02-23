@@ -187,7 +187,7 @@ namespace SQGitPlugin
         /// </returns>
         public BlameLine GetBlameByLine(string filePath, int line)
         {
-            if (this.repository == null)
+            if (this.repository == null || line < 0)
             {
                 return null;
             }
