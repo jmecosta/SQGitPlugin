@@ -320,6 +320,14 @@ namespace SQGitPlugin
         }
 
         /// <summary>
+        /// Called when [connect to sonar].
+        /// </summary>
+        /// <param name="config">The configuration.</param>
+        public void OnConnectToSonar(VSSonarPlugins.Types.ISonarConfiguration config)
+        {
+        }
+
+        /// <summary>
         /// Determines whether the specified base path is supported.
         /// </summary>
         /// <param name="basePathIn">The base path in.</param>
