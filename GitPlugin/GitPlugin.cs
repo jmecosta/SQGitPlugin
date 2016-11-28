@@ -118,7 +118,7 @@ namespace SQGitPlugin
         /// </summary>
         /// <param name="project">The project.</param>
         /// <param name="configuration">The configuration.</param>
-        public void AssociateProject(Resource project, ISonarConfiguration configuration, Dictionary<string, Profile> profile)
+        public void AssociateProject(Resource project, ISonarConfiguration configuration, Dictionary<string, Profile> profile, string vsversion)
         {
             // not needed
         }
